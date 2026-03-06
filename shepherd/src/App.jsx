@@ -682,11 +682,15 @@ export default function App() {
     if (!config.scriptUrl){showToast("⚠ Apps Script URL not set","#8b1a1a");return;}
     setSyncMsg("Saving…");
     try {
-      await fetch(config.scriptUrl,{method:"POST",mode:"no-cors",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({rows:[SHEET_HEADERS,...treeToRows(m,n)]})});
-      setSyncMsg(`✓ Saved ${new Date().toLocaleTimeString()}`);
-    } catch(e){setSyncMsg(`⚠ ${e.message}`);}
+      const payload = JSON.stringify({rows:[SHEET_HEADERS,...treeToRows(m,n)]});
+      const url = config.scriptUrl + "?data=" + encodeURIComponent(payload);
+      await fetch(url, { method:"GET", mode:"no-cors" });
+      setSyncMsg("✓ Saved " + new Date().toLocaleTimeString());
+      showToast("✓ Saved to Google Sheet", "#2ecc8a");
+    } catch(e){
+      setSyncMsg("⚠ Save failed: " + e.message);
+      showToast("⚠ Save failed","#8b1a1a");
+    }
   },[config]);
 
   // ── AUTH ────────────────────────────────────────────────────
