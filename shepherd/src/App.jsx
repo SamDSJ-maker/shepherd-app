@@ -650,6 +650,7 @@ export default function App() {
     userEmail.toLowerCase()===config.ministerEmail.toLowerCase();
 
   // leader = first node (at any depth) whose authEmail matches
+  const isPending  = session?.pending && !isMinister;
   const leaderNode = !isMinister&&userEmail
     ? findNode(nodes, flatTree(nodes).find(n=>n.authEmail&&n.authEmail.toLowerCase()===userEmail.toLowerCase())?.id||"")
     : null;
@@ -677,6 +678,23 @@ export default function App() {
   },[config]);
 
   useEffect(()=>{if(isConnected) load();},[isConnected]);
+
+  // After sheet loads, verify pending sessions (leaders whose email needed sheet data)
+  useEffect(()=>{
+    if (!session?.pending) return;
+    const email = session.email;
+    const isMin = email.toLowerCase()===(config.ministerEmail||"").toLowerCase();
+    const isLeader = flatTree(nodes).some(n=>n.authEmail&&n.authEmail.toLowerCase()===email.toLowerCase());
+    if (isMin||isLeader){
+      setSession(s=>({...s,pending:false}));
+      Store.set(SESSION_KEY,{...session,pending:false});
+    } else if (!loading && nodes.length>0){
+      // Sheet has loaded and user still not found
+      setAuthErr(`${email} is not authorized. Ask your minister to grant access.`);
+      setSession(null);
+      Store.remove(SESSION_KEY);
+    }
+  },[nodes,loading]);
 
   // ── SAVE via script tag (bypasses CORS) ─────────────────────
   const save = useCallback((m,n)=>{
@@ -715,15 +733,12 @@ export default function App() {
     if (!p){setAuthErr("Could not verify Google token.");return;}
     const email = p.email;
     const isMin = email.toLowerCase()===(config.ministerEmail||"").toLowerCase();
-    const isLeader = flatTree(nodes).some(n=>n.authEmail&&n.authEmail.toLowerCase()===email.toLowerCase());
-    if (!isMin&&!isLeader){
-      setAuthErr(`${email} is not authorized. Ask your minister to grant access.`);
-      return;
-    }
-    const sess = {email, name:p.name||"", picture:p.picture||""};
+    // Save credential first, then verify after sheet loads
+    // This handles the case where sheet hasn't loaded yet when user logs in
+    const sess = {email, name:p.name||"", picture:p.picture||"", pending:!isMin};
     setSession(sess); setAuthErr("");
     Store.set(SESSION_KEY, sess);
-  },[config,nodes]);
+  },[config]);
 
   const logout = ()=>{
     setSession(null);
@@ -799,6 +814,25 @@ export default function App() {
   }
 
   // ── UNAUTHORIZED ─────────────────────────────────────────────
+  // Still loading sheet data — show spinner instead of access denied
+  if (isPending) {
+    return <>
+      <style>{CSS}</style>
+      <div style={{minHeight:"100vh",background:T.bg0,display:"flex",alignItems:"center",
+        justifyContent:"center",padding:20}}>
+        <div style={{background:T.bg2,border:`1px solid ${T.border2}`,
+          borderTop:`2px solid ${T.gold}`,borderRadius:12,padding:40,
+          maxWidth:380,textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:16}}>✝</div>
+          <h2 style={{color:T.goldL,fontFamily:"'Cinzel',serif",marginBottom:12}}>Verifying Access…</h2>
+          <p style={{color:T.textSub,fontSize:14}}>Loading your network data, please wait.</p>
+          <div style={{marginTop:20,color:T.textDim,fontSize:12}}>Signed in as {userEmail}</div>
+          <div style={{marginTop:16}}><GoldBtn onClick={logout} outline small>Cancel</GoldBtn></div>
+        </div>
+      </div>
+    </>;
+  }
+
   if (!isMinister&&!leaderNode) {
     return <>
       <style>{CSS}</style>
