@@ -44,6 +44,25 @@ const CSS = `
 const CONFIG_KEY  = "shepherd-config-v1";
 const SESSION_KEY = "shepherd-session-v1";
 
+// ─── Safe storage (falls back gracefully if localStorage blocked) ─
+const Store = {
+  get(key) {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch {}
+    try { const v = sessionStorage.getItem(key); return v ? JSON.parse(v) : null; } catch {}
+    return null;
+  },
+  set(key, val) {
+    const s = JSON.stringify(val);
+    try { localStorage.setItem(key, s); return true; } catch {}
+    try { sessionStorage.setItem(key, s); return true; } catch {}
+    return false;
+  },
+  remove(key) {
+    try { localStorage.removeItem(key); } catch {}
+    try { sessionStorage.removeItem(key); } catch {}
+  }
+};
+
 const SHEET_HEADERS = [
   "Type","Id","ParentId","FamilyName","ContactPerson",
   "MemberId","TelegramId","Country","State",
@@ -595,10 +614,11 @@ function TreeNode({ node, depth, isMinister, onEdit, onAdd }) {
 //  MAIN APP
 // ─────────────────────────────────────────────────────────────
 export default function App() {
-  const [config,   setConfig]   = useState(()=>{ try{return JSON.parse(localStorage.getItem(CONFIG_KEY))||{};}catch{return{};} });
-  const [session,  setSession]  = useState(()=>{ try{return JSON.parse(sessionStorage.getItem(SESSION_KEY))||null;}catch{return null;} });
+  const [config,   setConfig]   = useState(()=> Store.get(CONFIG_KEY)  || {});
+  const [session,  setSession]  = useState(()=> Store.get(SESSION_KEY) || null);
   const [authErr,  setAuthErr]  = useState("");
   const [showSetup,setShowSetup]= useState(false);
+  const [saveStatus,setSaveStatus] = useState("");
 
   const [minister, setMinister] = useState({name:"",contactPerson:"",memberId:"",telegramId:"",country:"",state:"",notes:"",googleEmail:""});
   const [nodes,    setNodes]    = useState(()=>Array.from({length:5},(_,i)=>makeNode(`root${i+1}`,"")));
@@ -670,12 +690,12 @@ export default function App() {
     }
     const sess = {email, name:p.name||"", picture:p.picture||""};
     setSession(sess); setAuthErr("");
-    try{sessionStorage.setItem(SESSION_KEY,JSON.stringify(sess));}catch{}
+    Store.set(SESSION_KEY, sess);
   },[config,nodes]);
 
   const logout = ()=>{
     setSession(null);
-    try{sessionStorage.removeItem(SESSION_KEY);}catch{}
+    Store.remove(SESSION_KEY);
   };
 
   // ── TREE MUTATIONS ───────────────────────────────────────────
@@ -704,9 +724,10 @@ export default function App() {
 
   const handleSaveConfig = (c)=>{
     setConfig(c);
-    try{localStorage.setItem(CONFIG_KEY,JSON.stringify(c));}catch{}
+    const saved = Store.set(CONFIG_KEY, c);
+    setSaveStatus(saved ? "✓ Saved to browser" : "⚠ Browser storage blocked — config held in memory only");
     setShowSetup(false);
-    showToast("✓ Configuration saved","#6a3aed");
+    showToast("✓ Configuration saved — you can now sign in","#6a3aed");
   };
 
   // ── SEARCH FILTER ────────────────────────────────────────────
