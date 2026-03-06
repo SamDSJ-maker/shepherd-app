@@ -626,9 +626,9 @@ function TreeNode({ node, depth, isMinister, onEdit, onAdd }) {
           {/* actions */}
           <div style={{display:"flex",gap:4,flexShrink:0,marginTop:2}}
             onClick={e=>e.stopPropagation()}>
-            <IconBtn onClick={()=>onEdit(node)} title="View / Edit"
+            <IconBtn onClick={()=>onEdit(node)} title={isMinister?"Edit":"View / Assign Leader"}
               color={T.bg4} tc={T.blue} border={T.border2}>
-              {isMinister?"✎":"👁"}
+              {isMinister?"✎":"✎"}
             </IconBtn>
             <IconBtn onClick={()=>onAdd(node)} title="Add sub-family"
               color="#0a1f0e" tc={T.green} border="#0f3a1a">+</IconBtn>
@@ -1060,22 +1060,48 @@ export default function App() {
 // ── sub-components kept small ──────────────────────────────
 function EditNodeModal({node, isMinister, onSave, onClose}) {
   const [form,setForm] = useState({...node});
-  return <>
-    <NodeForm form={form} setForm={setForm} isMinister={isMinister} readOnly={!isMinister}/>
-    {isMinister
-      ?<div style={{display:"flex",gap:8,marginTop:4}}>
-        <GoldBtn onClick={()=>onSave(form)} full>Save Changes</GoldBtn>
+  const f = k => e => setForm(p=>({...p,[k]:e.target.value}));
+
+  if (!isMinister) {
+    // Leaders can only assign a sub-leader email
+    return <>
+      <div style={{background:T.bg3,border:`1px solid ${T.border}`,borderRadius:8,
+        padding:"12px 14px",marginBottom:16}}>
+        <div style={{color:T.textSub,fontSize:13,marginBottom:4,fontFamily:"'Cinzel',serif",
+          letterSpacing:"0.05em"}}>FAMILY</div>
+        <div style={{color:T.text,fontWeight:700,fontSize:15}}>{node.familyName||"—"}</div>
+        {node.contactPerson&&<div style={{color:T.textSub,fontSize:13,marginTop:2}}>{node.contactPerson}</div>}
+        {(node.country||node.state)&&<div style={{color:T.textDim,fontSize:12,marginTop:2}}>
+          📍 {[node.state,node.country].filter(Boolean).join(", ")}</div>}
+      </div>
+      <Label gold>Assign Sub-Leader Google Email</Label>
+      <p style={{color:T.textSub,fontSize:12,marginBottom:10,lineHeight:1.5}}>
+        Enter a Gmail address to give this person leader access to this family's sub-group.
+      </p>
+      <Input value={form.authEmail||""} onChange={f("authEmail")}
+        placeholder="subleader@gmail.com" type="email"/>
+      <div style={{display:"flex",gap:8,marginTop:4}}>
+        <GoldBtn onClick={()=>onSave(form)} full>Assign Leader</GoldBtn>
         <GoldBtn onClick={onClose} outline>Cancel</GoldBtn>
       </div>
-      :<GoldBtn onClick={onClose} full outline>Close</GoldBtn>}
+    </>;
+  }
+
+  return <>
+    <NodeForm form={form} setForm={setForm} isMinister={isMinister} readOnly={false}/>
+    <div style={{display:"flex",gap:8,marginTop:4}}>
+      <GoldBtn onClick={()=>onSave(form)} full>Save Changes</GoldBtn>
+      <GoldBtn onClick={onClose} outline>Cancel</GoldBtn>
+    </div>
   </>;
 }
 
 function AddNodeModal({parentNode, isMinister, onAdd, onClose}) {
   const [form,setForm] = useState({familyName:"",contactPerson:"",memberId:"",
     telegramId:"",country:"",state:"",notes:"",authEmail:""});
+  // Leaders can add families and optionally assign a sub-leader email
   return <>
-    <NodeForm form={form} setForm={setForm} isMinister={isMinister}/>
+    <NodeForm form={form} setForm={setForm} isMinister={true}/>
     <div style={{display:"flex",gap:8,marginTop:4}}>
       <GoldBtn onClick={()=>onAdd(form)} full>+ Add Family</GoldBtn>
       <GoldBtn onClick={onClose} outline>Cancel</GoldBtn>
