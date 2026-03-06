@@ -44,7 +44,7 @@ const CSS = `
 // ─────────────────────────────────────────────────────────────
 const HARDCODED_CONFIG = {
   clientId:      "194738070438-h8mjndft5qn4g216mgqqg365huv40c5m.apps.googleusercontent.com",
-  ministerEmail: "swami4lyfe@gmail.com",
+  teamLeadEmail: "swami4lyfe@gmail.com",
   sheetId:       "14HH7PNFOvEeBhCjwGrfPd2vW5Dp9DYOQER0aE2usfl0",
   apiKey:        "AIzaSyBV39F-G7bnjpHG7CVBtUndaIMBhcdfdHk",
   scriptUrl:     "https://script.google.com/macros/s/AKfycbz1XPc_ra9Rrbb8N9ErfzwscIm3WJePS-QYqVf4e3jzJccTWO_4IE9G8Vbl_UDAiyJN/exec",
@@ -76,8 +76,8 @@ const Store = {
 };
 
 const SHEET_HEADERS = [
-  "Type","Id","ParentId","FamilyName","ContactPerson",
-  "MemberId","TelegramId","Country","State",
+  "Type","Id","ParentId","Name","DsjLead",
+  "DsjId","TelegramId","Country","State",
   "Notes","LastContact","LastNote","AuthEmail","Children"
 ];
 
@@ -95,8 +95,8 @@ function parseJwt(t) {
 }
 
 function makeNode(id="", parentId="", extra={}) {
-  return { id: id||uid(), parentId, familyName:"", contactPerson:"",
-    memberId:"", telegramId:"", country:"", state:"",
+  return { id: id||uid(), parentId, name:"", dsjLead:"",
+    dsjId:"", telegramId:"", country:"", state:"",
     notes:"", lastContact:null, lastNote:"", authEmail:"",
     children:[], ...extra };
 }
@@ -143,15 +143,15 @@ function getSubtree(nodes, id) {
 }
 
 // ── Sheets serialization ──────────────────────────────────────
-function treeToRows(minister, nodes) {
+function treeToRows(teamLead, nodes) {
   const rows = [];
-  rows.push(["MINISTER","__minister__","",minister.name||"",minister.contactPerson||"",
-    minister.memberId||"",minister.telegramId||"",minister.country||"",minister.state||"",
-    minister.notes||"","","",minister.googleEmail||"",""]);
+  rows.push(["TEAM_LEAD","__teamLead__","",teamLead.name||"",teamLead.dsjLead||"",
+    teamLead.dsjId||"",teamLead.telegramId||"",teamLead.country||"",teamLead.state||"",
+    teamLead.notes||"","","",teamLead.googleEmail||"",""]);
 
   function walk(n, pid) {
-    rows.push(["NODE", n.id, pid, n.familyName||"", n.contactPerson||"",
-      n.memberId||"", n.telegramId||"", n.country||"", n.state||"",
+    rows.push(["NODE", n.id, pid, n.name||"", n.dsjLead||"",
+      n.dsjId||"", n.telegramId||"", n.country||"", n.state||"",
       n.notes||"", n.lastContact||"", n.lastNote||"", n.authEmail||"",
       (n.children||[]).map(c=>c.id).join("|")
     ]);
@@ -162,7 +162,7 @@ function treeToRows(minister, nodes) {
 }
 
 function rowsToTree(rows) {
-  const minister = { name:"", contactPerson:"", memberId:"", telegramId:"",
+  const teamLead = { name:"", dsjLead:"", dsjId:"", telegramId:"",
     country:"", state:"", notes:"", googleEmail:"" };
   const map = {};
   const rootIds = [];
@@ -177,11 +177,11 @@ function rowsToTree(rows) {
     const type = get(r,"Type");
     const id   = get(r,"Id");
     const pid  = get(r,"ParentId");
-    if (type==="MINISTER") {
-      Object.assign(minister,{
-        name:          get(r,"FamilyName"),
-        contactPerson: get(r,"ContactPerson"),
-        memberId:      get(r,"MemberId"),
+    if (type==="TEAM_LEAD") {
+      Object.assign(teamLead,{
+        name:          get(r,"Name"),
+        dsjLead: get(r,"DsjLead"),
+        dsjId:      get(r,"DsjId"),
         telegramId:    get(r,"TelegramId"),
         country:       get(r,"Country"),
         state:         get(r,"State"),
@@ -195,9 +195,9 @@ function rowsToTree(rows) {
       console.log(`Node ${id} authEmail: "${authEmail}"`);
       map[id] = {
         id, parentId:pid,
-        familyName:    get(r,"FamilyName"),
-        contactPerson: get(r,"ContactPerson"),
-        memberId:      get(r,"MemberId"),
+        name:    get(r,"Name"),
+        dsjLead: get(r,"DsjLead"),
+        dsjId:      get(r,"DsjId"),
         telegramId:    get(r,"TelegramId"),
         country:       get(r,"Country"),
         state:         get(r,"State"),
@@ -220,7 +220,7 @@ function rowsToTree(rows) {
   if (roots.length === 0) {
     roots = Array.from({length:5},(_,i) => makeNode(`root${i+1}`,""));
   }
-  return { minister, nodes: roots };
+  return { teamLead, nodes: roots };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -314,20 +314,20 @@ function Toast({ msg, color }) {
 // ─────────────────────────────────────────────────────────────
 //  NODE FORM  (shared by add + edit)
 // ─────────────────────────────────────────────────────────────
-function NodeForm({ form, setForm, isMinister, readOnly }) {
+function NodeForm({ form, setForm, isTeamLead, readOnly }) {
   const f = k => e => setForm(p=>({...p,[k]:e.target.value}));
   return <>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>
-      <div><Label>Family Name</Label><Input value={form.familyName} onChange={f("familyName")} placeholder="e.g. Johnson Family" readOnly={readOnly}/></div>
-      <div><Label>Contact Person</Label><Input value={form.contactPerson} onChange={f("contactPerson")} placeholder="e.g. John Johnson" readOnly={readOnly}/></div>
-      <div><Label>Member ID</Label><Input value={form.memberId} onChange={f("memberId")} placeholder="e.g. M-0042" readOnly={readOnly}/></div>
+      <div><Label>Name</Label><Input value={form.name} onChange={f("name")} placeholder="e.g. Johnson" readOnly={readOnly}/></div>
+      <div><Label>DSJ Lead</Label><Input value={form.dsjLead} onChange={f("dsjLead")} placeholder="e.g. John Johnson" readOnly={readOnly}/></div>
+      <div><Label>DSJ ID</Label><Input value={form.dsjId} onChange={f("dsjId")} placeholder="e.g. D-0042" readOnly={readOnly}/></div>
       <div><Label>Telegram ID</Label><Input value={form.telegramId} onChange={f("telegramId")} placeholder="@username" readOnly={readOnly}/></div>
       <div><Label>Country</Label><Input value={form.country} onChange={f("country")} placeholder="e.g. United States" readOnly={readOnly}/></div>
       <div><Label>State / Province</Label><Input value={form.state} onChange={f("state")} placeholder="e.g. Texas" readOnly={readOnly}/></div>
     </div>
     <Label>Notes</Label>
     <Textarea value={form.notes} onChange={f("notes")} placeholder="Prayer requests, visit notes…" readOnly={readOnly}/>
-    {isMinister && <>
+    {isTeamLead && <>
       <Divider/>
       <Label gold>Leader Google Email — grants login access to this family's subtree</Label>
       <Input value={form.authEmail} onChange={f("authEmail")} placeholder="leader@gmail.com" type="email"/>
@@ -340,10 +340,10 @@ function NodeForm({ form, setForm, isMinister, readOnly }) {
 // ─────────────────────────────────────────────────────────────
 function SetupPanel({ config, onSave, onCancel }) {
   const [form, setForm] = useState({
-    clientId:"", ministerEmail:"", apiKey:"", sheetId:"", scriptUrl:"", ...config
+    clientId:"", teamLeadEmail:"", apiKey:"", sheetId:"", scriptUrl:"", ...config
   });
   const f = k => e => setForm(p=>({...p,[k]:e.target.value}));
-  const ready = form.clientId && form.ministerEmail && form.apiKey && form.sheetId && form.scriptUrl;
+  const ready = form.clientId && form.teamLeadEmail && form.apiKey && form.sheetId && form.scriptUrl;
 
   const steps = [
     { n:1, title:"Create Google Cloud Project & OAuth Client ID", body:
@@ -406,13 +406,13 @@ function doGet() { return ContentService.createTextOutput("OK"); }`}</pre>
       <Divider/>
       {[
         ["OAuth Client ID","clientId","123456-abc.apps.googleusercontent.com"],
-        ["Your Google Email (Minister — full access)","ministerEmail","you@gmail.com"],
+        ["Your Google Email (Team Lead — full access)","teamLeadEmail","you@gmail.com"],
         ["Google Sheet ID","sheetId","1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"],
         ["API Key","apiKey","AIzaSy..."],
         ["Apps Script Web App URL","scriptUrl","https://script.google.com/macros/s/.../exec"],
       ].map(([label,key,ph]) => (
         <div key={key}>
-          <Label gold={key==="ministerEmail"}>{label}</Label>
+          <Label gold={key==="teamLeadEmail"}>{label}</Label>
           <Input value={form[key]||""} onChange={f(key)} placeholder={ph} style={{fontFamily:"monospace",fontSize:12}}/>
         </div>
       ))}
@@ -468,12 +468,12 @@ function LoginScreen({ clientId, onToken, onSetup, error }) {
         {/* cross emblem */}
         <div style={{width:56,height:56,borderRadius:"50%",background:T.bg4,
           border:`1px solid ${T.gold}`,display:"flex",alignItems:"center",justifyContent:"center",
-          fontSize:26,margin:"0 auto 20px"}}>✝</div>
+          fontSize:26,margin:"0 auto 20px"}}>👨‍👩‍👧‍👦</div>
 
         <h1 style={{fontFamily:"'Cinzel',serif",fontSize:24,color:T.goldL,
-          letterSpacing:"0.08em",marginBottom:6}}>Shepherd</h1>
+          letterSpacing:"0.08em",marginBottom:6}}>BG Wealth</h1>
         <p style={{color:T.textSub,fontSize:14,marginBottom:30,fontStyle:"italic"}}>
-          Pastoral Network Management
+          Network Management
         </p>
 
         {clientId ? (
@@ -499,12 +499,12 @@ function LoginScreen({ clientId, onToken, onSetup, error }) {
 //  DASHBOARD STATS
 // ─────────────────────────────────────────────────────────────
 function Dashboard({ nodes, title }) {
-  const all  = flatTree(nodes).filter(n=>n.familyName);
+  const all  = flatTree(nodes).filter(n=>n.name);
   const total   = all.length;
   const recent  = all.filter(n=>{const d=daysSince(n.lastContact);return d!==null&&d<=7;}).length;
   const overdue = all.filter(n=>{const d=daysSince(n.lastContact);return d!==null&&d>30;}).length;
   const never   = all.filter(n=>!n.lastContact).length;
-  const overdueFams = all.filter(n=>{const d=daysSince(n.lastContact);return d===null||(d!==null&&d>21);}).filter(n=>n.familyName);
+  const overdueFams = all.filter(n=>{const d=daysSince(n.lastContact);return d===null||(d!==null&&d>21);}).filter(n=>n.name);
 
   return (
     <div className="fade-in">
@@ -536,8 +536,8 @@ function Dashboard({ nodes, title }) {
             <div key={n.id} style={{background:T.bg2,border:`1px solid ${T.border}`,
               borderRadius:8,padding:"10px 14px",display:"flex",
               alignItems:"center",gap:10,flexWrap:"wrap"}}>
-              <span style={{flex:1,color:T.text,fontWeight:600}}>{n.familyName}</span>
-              {n.contactPerson&&<span style={{color:T.textSub,fontSize:13}}>{n.contactPerson}</span>}
+              <span style={{flex:1,color:T.text,fontWeight:600}}>{n.name}</span>
+              {n.dsjLead&&<span style={{color:T.textSub,fontSize:13}}>{n.dsjLead}</span>}
               {n.country&&<span style={{color:T.textDim,fontSize:12}}>{n.state?`${n.state}, `:""}{n.country}</span>}
               <Badge days={daysSince(n.lastContact)}/>
             </div>
@@ -560,7 +560,7 @@ function Dashboard({ nodes, title }) {
 // ─────────────────────────────────────────────────────────────
 //  NETWORK TREE ROW
 // ─────────────────────────────────────────────────────────────
-function TreeNode({ node, depth, isMinister, onEdit, onAdd }) {
+function TreeNode({ node, depth, isTeamLead, onEdit, onAdd }) {
   const [open, setOpen] = useState(depth < 2);
   const hasKids = node.children && node.children.length > 0;
   const days = daysSince(node.lastContact);
@@ -587,16 +587,16 @@ function TreeNode({ node, depth, isMinister, onEdit, onAdd }) {
           {/* info */}
           <div style={{flex:1,minWidth:0}} onClick={e=>e.stopPropagation()}>
             <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-              <span style={{color:node.familyName?T.text:T.textDim,
+              <span style={{color:node.name?T.text:T.textDim,
                 fontWeight:depth===0?700:500,
                 fontSize:depth===0?15:14,
                 fontFamily:"'Cinzel',serif"}}>
-                {node.familyName||(depth===0?"— Unnamed Core Family —":"— Unnamed Family —")}
+                {node.name||(depth===0?"— Unnamed Core Family —":"— Unnamed Family —")}
               </span>
-              {node.contactPerson&&
-                <span style={{color:T.textSub,fontSize:12}}>{node.contactPerson}</span>}
+              {node.dsjLead&&
+                <span style={{color:T.textSub,fontSize:12}}>{node.dsjLead}</span>}
               <Badge days={days}/>
-              {isMinister&&node.authEmail&&
+              {isTeamLead&&node.authEmail&&
                 <span style={{background:"#071a0e",border:`1px solid #0f3a1a`,
                   color:T.green,fontSize:9,padding:"1px 6px",borderRadius:3,
                   fontFamily:"'Cinzel',serif"}}>✓ leader</span>}
@@ -605,8 +605,8 @@ function TreeNode({ node, depth, isMinister, onEdit, onAdd }) {
             </div>
 
             <div style={{marginTop:5,display:"flex",flexWrap:"wrap",gap:4}}>
-              {node.memberId&&<span style={{background:T.bg0,border:`1px solid ${T.border}`,
-                borderRadius:4,padding:"1px 7px",fontSize:10,color:T.textSub}}>ID: {node.memberId}</span>}
+              {node.dsjId&&<span style={{background:T.bg0,border:`1px solid ${T.border}`,
+                borderRadius:4,padding:"1px 7px",fontSize:10,color:T.textSub}}>ID: {node.dsjId}</span>}
               {node.telegramId&&<span style={{background:T.bg0,border:`1px solid ${T.border}`,
                 borderRadius:4,padding:"1px 7px",fontSize:10,color:T.textSub}}>✈ {node.telegramId}</span>}
               {(node.state||node.country)&&<span style={{background:T.bg0,border:`1px solid ${T.border}`,
@@ -623,9 +623,9 @@ function TreeNode({ node, depth, isMinister, onEdit, onAdd }) {
           {/* actions */}
           <div style={{display:"flex",gap:4,flexShrink:0,marginTop:2}}
             onClick={e=>e.stopPropagation()}>
-            <IconBtn onClick={()=>onEdit(node)} title={isMinister?"Edit":"View / Assign Leader"}
+            <IconBtn onClick={()=>onEdit(node)} title={isTeamLead?"Edit":"View / Assign Leader"}
               color={T.bg4} tc={T.blue} border={T.border2}>
-              {isMinister?"✎":"✎"}
+              {isTeamLead?"✎":"✎"}
             </IconBtn>
             <IconBtn onClick={()=>onAdd(node)} title="Add sub-family"
               color="#0a1f0e" tc={T.green} border="#0f3a1a">+</IconBtn>
@@ -638,7 +638,7 @@ function TreeNode({ node, depth, isMinister, onEdit, onAdd }) {
         <div style={{marginTop:4,borderLeft:`1px dashed ${T.border}`,
           paddingLeft:4,marginLeft:8}}>
           {node.children.map(c=>(
-            <TreeNode key={c.id} node={c} depth={depth+1} isMinister={isMinister}
+            <TreeNode key={c.id} node={c} depth={depth+1} isTeamLead={isTeamLead}
               onEdit={onEdit} onAdd={onAdd}/>
           ))}
         </div>
@@ -658,7 +658,7 @@ export default function App() {
   const [showSetup,setShowSetup]= useState(false);
   const [saveStatus,setSaveStatus] = useState("");
 
-  const [minister, setMinister] = useState({name:"",contactPerson:"",memberId:"",telegramId:"",country:"",state:"",notes:"",googleEmail:""});
+  const [teamLead, setTeamLead] = useState({name:"",dsjLead:"",dsjId:"",telegramId:"",country:"",state:"",notes:"",googleEmail:""});
   const [nodes,    setNodes]    = useState(()=>Array.from({length:5},(_,i)=>makeNode(`root${i+1}`,"")));
 
   const [view,     setView]     = useState("tree");   // tree | dashboard
@@ -671,16 +671,16 @@ export default function App() {
 
   const isConnected = true; // credentials are hardcoded
   const userEmail   = session?.email||"";
-  const isMinister  = userEmail && config.ministerEmail &&
-    userEmail.toLowerCase()===config.ministerEmail.toLowerCase();
+  const isTeamLead  = userEmail && config.teamLeadEmail &&
+    userEmail.toLowerCase()===config.teamLeadEmail.toLowerCase();
 
   // leader = first node (at any depth) whose authEmail matches
-  const isPending  = session?.pending && !isMinister;
-  const leaderNode = !isMinister&&userEmail
+  const isPending  = session?.pending && !isTeamLead;
+  const leaderNode = !isTeamLead&&userEmail
     ? findNode(nodes, flatTree(nodes).find(n=>n.authEmail&&n.authEmail.toLowerCase()===userEmail.toLowerCase())?.id||"")
     : null;
 
-  const scopedNodes = isMinister ? nodes : leaderNode ? leaderNode.children : [];
+  const scopedNodes = isTeamLead ? nodes : leaderNode ? leaderNode.children : [];
 
   const showToast = (msg,color=T.indigo)=>{
     setToast({msg,color}); setTimeout(()=>setToast(null),3000);
@@ -703,9 +703,9 @@ export default function App() {
       console.log("Sheet rows loaded:", (j.values||[]).length);
       console.log("First few rows:", JSON.stringify((j.values||[]).slice(0,4)));
       if ((j.values||[]).length<=1){setSyncMsg("Sheet is empty — add families first");setLoading(false);return;}
-      const {minister:m, nodes:n} = rowsToTree(j.values);
+      const {teamLead:m, nodes:n} = rowsToTree(j.values);
       console.log("Parsed nodes:", n.length, "authEmails:", flatTree(n).map(x=>x.authEmail).filter(Boolean));
-      setMinister(m); setNodes(n);
+      setTeamLead(m); setNodes(n);
       setSyncMsg(`✓ ${new Date().toLocaleTimeString()}`);
     } catch(e){
       console.error("Load exception:", e);
@@ -722,7 +722,7 @@ export default function App() {
     if (!session?.pending) return;
     if (loading) return; // wait for sheet to finish loading
     const email = session.email.toLowerCase().trim();
-    const isMin = email===(config.ministerEmail||"").toLowerCase().trim();
+    const isMin = email===(config.teamLeadEmail||"").toLowerCase().trim();
     const allNodes = flatTree(nodes);
     console.log("Verifying login (post-load):", email);
     console.log("All authEmails:", allNodes.map(n=>n.authEmail).filter(Boolean));
@@ -732,7 +732,7 @@ export default function App() {
       setSession(s=>({...s,pending:false}));
       Store.set(SESSION_KEY,{...session,pending:false});
     } else {
-      setAuthErr(`${session.email} is not authorized. Ask your minister to grant access.`);
+      setAuthErr(`${session.email} is not authorized. Ask your teamLead to grant access.`);
       setSession(null);
       Store.remove(SESSION_KEY);
     }
@@ -774,7 +774,7 @@ export default function App() {
     const p = parseJwt(credential);
     if (!p){setAuthErr("Could not verify Google token.");return;}
     const email = p.email;
-    const isMin = email.toLowerCase()===(config.ministerEmail||"").toLowerCase();
+    const isMin = email.toLowerCase()===(config.teamLeadEmail||"").toLowerCase();
     // Save credential first, then verify after sheet loads
     // This handles the case where sheet hasn't loaded yet when user logs in
     const sess = {email, name:p.name||"", picture:p.picture||"", pending:!isMin};
@@ -792,15 +792,15 @@ export default function App() {
     const updated = updateNode(nodes, form.id, ()=>form);
     setNodes(updated); setEditNode(null);
     showToast("✓ Saved",T.green);
-    await save(minister,updated);
+    await save(teamLead,updated);
   };
 
   const handleAddFamily = async(parentId, form)=>{
     const newNode = makeNode(uid(), parentId, form);
     const updated = injectChild(nodes, parentId, newNode);
     setNodes(updated); setAddParent(null);
-    showToast(`+ ${form.familyName||"Family"} added`,T.green);
-    await save(minister,updated);
+    showToast(`+ ${form.name||"Family"} added`,T.green);
+    await save(teamLead,updated);
   };
 
   const handleAddRoot = async()=>{
@@ -808,7 +808,7 @@ export default function App() {
     const updated = [...nodes, newNode];
     setNodes(updated);
     showToast("+ Core family added");
-    await save(minister,updated);
+    await save(teamLead,updated);
   };
 
   const handleSaveConfig = (c)=>{
@@ -824,7 +824,7 @@ export default function App() {
   function filterNodes(ns){
     if (!search) return ns;
     return ns.reduce((acc,n)=>{
-      const match = [n.familyName,n.contactPerson,n.memberId,n.telegramId,n.country,n.state]
+      const match = [n.name,n.dsjLead,n.dsjId,n.telegramId,n.country,n.state]
         .some(v=>v&&v.toLowerCase().includes(sl));
       const kids = filterNodes(n.children||[]);
       if (match||kids.length) acc.push({...n,children:kids});
@@ -865,7 +865,7 @@ export default function App() {
         <div style={{background:T.bg2,border:`1px solid ${T.border2}`,
           borderTop:`2px solid ${T.gold}`,borderRadius:12,padding:40,
           maxWidth:380,textAlign:"center"}}>
-          <div style={{fontSize:40,marginBottom:16}}>✝</div>
+          <div style={{fontSize:40,marginBottom:16}}>👨‍👩‍👧‍👦</div>
           <h2 style={{color:T.goldL,fontFamily:"'Cinzel',serif",marginBottom:12}}>Verifying Access…</h2>
           <p style={{color:T.textSub,fontSize:14}}>Loading your network data, please wait.</p>
           <div style={{marginTop:20,color:T.textDim,fontSize:12}}>Signed in as {userEmail}</div>
@@ -875,7 +875,7 @@ export default function App() {
     </>;
   }
 
-  if (!isMinister&&!leaderNode) {
+  if (!isTeamLead&&!leaderNode) {
     return <>
       <style>{CSS}</style>
       <div style={{minHeight:"100vh",background:T.bg0,display:"flex",alignItems:"center",
@@ -887,7 +887,7 @@ export default function App() {
           <h2 style={{color:"#f87171",fontFamily:"'Cinzel',serif",marginBottom:12}}>Access Denied</h2>
           <p style={{color:T.textSub,fontSize:14,lineHeight:1.6}}>
             <strong style={{color:T.text}}>{userEmail}</strong> is not authorized.<br/>
-            Contact your minister to be granted access.
+            Contact your teamLead to be granted access.
           </p>
           <div style={{marginTop:24}}>
             <GoldBtn onClick={logout} outline>Sign Out</GoldBtn>
@@ -898,9 +898,9 @@ export default function App() {
   }
 
   // ── MAIN UI ──────────────────────────────────────────────────
-  const headerTitle = isMinister
-    ? (minister.name||"Minister")
-    : (leaderNode?.familyName||session.name||"Leader");
+  const headerTitle = isTeamLead
+    ? (teamLead.name||"Team Lead")
+    : (leaderNode?.name||session.name||"Leader");
 
   return <>
     <style>{CSS}</style>
@@ -913,9 +913,9 @@ export default function App() {
 
         {/* logo */}
         <div style={{display:"flex",alignItems:"center",gap:10,marginRight:8}}>
-          <span style={{fontSize:20}}>✝</span>
+          <span style={{fontSize:20}}>👨‍👩‍👧‍👦</span>
           <span style={{fontFamily:"'Cinzel',serif",color:T.goldL,fontSize:17,
-            letterSpacing:"0.08em",fontWeight:700}}>Shepherd</span>
+            letterSpacing:"0.08em",fontWeight:700}}>BG Wealth</span>
         </div>
 
         {/* nav tabs */}
@@ -939,7 +939,7 @@ export default function App() {
         <IconBtn onClick={load} color={T.bg3} tc={T.blue} border={T.border}
           title="Refresh from Sheets">{loading?"⟳":"⟳"}</IconBtn>
 
-        {isMinister&&<IconBtn onClick={()=>setShowSetup(true)} color={T.bg3}
+        {isTeamLead&&<IconBtn onClick={()=>setShowSetup(true)} color={T.bg3}
           tc={T.textSub} border={T.border}>⚙</IconBtn>}
 
         {/* user avatar */}
@@ -959,11 +959,11 @@ export default function App() {
         background:T.bg2,border:`1px solid ${T.border}`,borderLeft:`3px solid ${T.gold}`,
         borderRadius:8,padding:"10px 16px",flexWrap:"wrap"}}>
         <span style={{color:T.goldL,fontFamily:"'Cinzel',serif",fontSize:13,fontWeight:700}}>
-          {isMinister?"✝ Minister":"👤 Family Leader"}
+          {isTeamLead?"👨‍👩‍👧‍👦 Team Lead":"👤 Family Leader"}
         </span>
         <span style={{color:T.textSub,fontSize:13}}>{headerTitle}</span>
         <span style={{color:T.textDim,fontSize:12}}>{userEmail}</span>
-        {!isMinister&&<span style={{color:T.textDim,fontSize:12,fontStyle:"italic"}}>
+        {!isTeamLead&&<span style={{color:T.textDim,fontSize:12,fontStyle:"italic"}}>
           · viewing your assigned families only</span>}
         <div style={{marginLeft:"auto"}}>
           <GoldBtn onClick={logout} outline small>Sign Out</GoldBtn>
@@ -973,7 +973,7 @@ export default function App() {
       {/* ── DASHBOARD VIEW ── */}
       {view==="dashboard"&&(
         <Dashboard nodes={scopedNodes}
-          title={isMinister?"Full Network Dashboard":"Your Group Dashboard"}/>
+          title={isTeamLead?"Full Network Dashboard":"Your Group Dashboard"}/>
       )}
 
       {/* ── TREE VIEW ── */}
@@ -984,30 +984,30 @@ export default function App() {
             placeholder="Search by name, ID, Telegram, country…"
             style={{...sInput,flex:1,minWidth:200,marginBottom:0,fontSize:14,
               borderColor:search?T.gold:T.border}}/>
-          {isMinister&&(
+          {isTeamLead&&(
             <GoldBtn onClick={handleAddRoot} small>+ Core Family</GoldBtn>
           )}
-          {!isMinister&&leaderNode&&(
+          {!isTeamLead&&leaderNode&&(
             <GoldBtn onClick={()=>setAddParent(leaderNode)} small>+ Add Family</GoldBtn>
           )}
         </div>
 
-        {/* minister profile (minister only) */}
-        {isMinister&&<div style={{background:T.bg2,border:`1px solid ${T.border2}`,
+        {/* teamLead profile (teamLead only) */}
+        {isTeamLead&&<div style={{background:T.bg2,border:`1px solid ${T.border2}`,
           borderTop:`1px solid ${T.gold}`,borderRadius:10,padding:"14px 16px",marginBottom:16}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
             <span style={{fontFamily:"'Cinzel',serif",color:T.goldL,fontSize:12,letterSpacing:"0.08em"}}>
-              MINISTER PROFILE
+              TEAM_LEAD PROFILE
             </span>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:"0 12px"}}>
-            {[["Name","name"],["Phone / Contact","contactPerson"],["Member ID","memberId"],
+            {[["Name","name"],["Phone / Contact","dsjLead"],["DSJ ID","dsjId"],
               ["Telegram ID","telegramId"],["Country","country"],["State","state"]].map(([ph,key])=>(
               <div key={key}>
                 <Label>{ph}</Label>
-                <Input value={minister[key]||""} style={{fontSize:13,marginBottom:8}}
-                  onChange={e=>setMinister(p=>({...p,[key]:e.target.value}))}
-                  onBlur={()=>save(minister,nodes)} placeholder={ph}/>
+                <Input value={teamLead[key]||""} style={{fontSize:13,marginBottom:8}}
+                  onChange={e=>setTeamLead(p=>({...p,[key]:e.target.value}))}
+                  onBlur={()=>save(teamLead,nodes)} placeholder={ph}/>
               </div>
             ))}
           </div>
@@ -1019,7 +1019,7 @@ export default function App() {
             {search?`No results for "${search}"`:"No families yet — add one above."}
           </div>
           :displayNodes.map(n=>(
-            <TreeNode key={n.id} node={n} depth={0} isMinister={isMinister}
+            <TreeNode key={n.id} node={n} depth={0} isTeamLead={isTeamLead}
               onEdit={setEditNode} onAdd={setAddParent}/>
           ))
         }
@@ -1041,15 +1041,15 @@ export default function App() {
     </div>
 
     {/* ── EDIT MODAL ── */}
-    {editNode&&<Modal title={isMinister?"Edit Family":"Family Details"} onClose={()=>setEditNode(null)}>
-      <EditNodeModal node={editNode} isMinister={isMinister}
+    {editNode&&<Modal title={isTeamLead?"Edit Family":"Family Details"} onClose={()=>setEditNode(null)}>
+      <EditNodeModal node={editNode} isTeamLead={isTeamLead}
         onSave={handleSaveEdit} onClose={()=>setEditNode(null)}/>
     </Modal>}
 
     {/* ── ADD MODAL ── */}
-    {addParent&&<Modal title={`Add Family under ${addParent.familyName||"this group"}`}
+    {addParent&&<Modal title={`Add Family under ${addParent.name||"this group"}`}
       onClose={()=>setAddParent(null)}>
-      <AddNodeModal parentNode={addParent} isMinister={isMinister}
+      <AddNodeModal parentNode={addParent} isTeamLead={isTeamLead}
         onAdd={form=>handleAddFamily(addParent.id,form)} onClose={()=>setAddParent(null)}/>
     </Modal>}
 
@@ -1058,19 +1058,19 @@ export default function App() {
 }
 
 // ── sub-components kept small ──────────────────────────────
-function EditNodeModal({node, isMinister, onSave, onClose}) {
+function EditNodeModal({node, isTeamLead, onSave, onClose}) {
   const [form,setForm] = useState({...node});
   const f = k => e => setForm(p=>({...p,[k]:e.target.value}));
 
-  if (!isMinister) {
+  if (!isTeamLead) {
     // Leaders can only assign a sub-leader email
     return <>
       <div style={{background:T.bg3,border:`1px solid ${T.border}`,borderRadius:8,
         padding:"12px 14px",marginBottom:16}}>
         <div style={{color:T.textSub,fontSize:13,marginBottom:4,fontFamily:"'Cinzel',serif",
           letterSpacing:"0.05em"}}>FAMILY</div>
-        <div style={{color:T.text,fontWeight:700,fontSize:15}}>{node.familyName||"—"}</div>
-        {node.contactPerson&&<div style={{color:T.textSub,fontSize:13,marginTop:2}}>{node.contactPerson}</div>}
+        <div style={{color:T.text,fontWeight:700,fontSize:15}}>{node.name||"—"}</div>
+        {node.dsjLead&&<div style={{color:T.textSub,fontSize:13,marginTop:2}}>{node.dsjLead}</div>}
         {(node.country||node.state)&&<div style={{color:T.textDim,fontSize:12,marginTop:2}}>
           📍 {[node.state,node.country].filter(Boolean).join(", ")}</div>}
       </div>
@@ -1088,7 +1088,7 @@ function EditNodeModal({node, isMinister, onSave, onClose}) {
   }
 
   return <>
-    <NodeForm form={form} setForm={setForm} isMinister={isMinister} readOnly={false}/>
+    <NodeForm form={form} setForm={setForm} isTeamLead={isTeamLead} readOnly={false}/>
     <div style={{display:"flex",gap:8,marginTop:4}}>
       <GoldBtn onClick={()=>onSave(form)} full>Save Changes</GoldBtn>
       <GoldBtn onClick={onClose} outline>Cancel</GoldBtn>
@@ -1096,12 +1096,12 @@ function EditNodeModal({node, isMinister, onSave, onClose}) {
   </>;
 }
 
-function AddNodeModal({parentNode, isMinister, onAdd, onClose}) {
-  const [form,setForm] = useState({familyName:"",contactPerson:"",memberId:"",
+function AddNodeModal({parentNode, isTeamLead, onAdd, onClose}) {
+  const [form,setForm] = useState({name:"",dsjLead:"",dsjId:"",
     telegramId:"",country:"",state:"",notes:"",authEmail:""});
   // Leaders can add families and optionally assign a sub-leader email
   return <>
-    <NodeForm form={form} setForm={setForm} isMinister={true}/>
+    <NodeForm form={form} setForm={setForm} isTeamLead={true}/>
     <div style={{display:"flex",gap:8,marginTop:4}}>
       <GoldBtn onClick={()=>onAdd(form)} full>+ Add Family</GoldBtn>
       <GoldBtn onClick={onClose} outline>Cancel</GoldBtn>
