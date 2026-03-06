@@ -38,6 +38,18 @@ const CSS = `
   button:active { transform: scale(0.97); }
 `;
 
+
+// ─────────────────────────────────────────────────────────────
+//  HARDCODED CONFIG — baked in so all users skip setup screen
+// ─────────────────────────────────────────────────────────────
+const HARDCODED_CONFIG = {
+  clientId:      "194738070438-h8mjndft5qn4g216mgqqg365huv40c5m.apps.googleusercontent.com",
+  ministerEmail: "swami4lyfe@gmail.com",
+  sheetId:       "14HH7PNFOvEeBhCjwGrfPd2vW5Dp9DYOQER0aE2usfl0",
+  apiKey:        "AIzaSyBV39F-G7bnjpHG7CVBtUndaIMBhcdfdHk",
+  scriptUrl:     "https://script.google.com/macros/library/d/1PLup-gVRshY4kFPvFiaRiSiEw9M1M9mlu1LcmxM5a93E2kVQOv-4R758/1",
+};
+
 // ─────────────────────────────────────────────────────────────
 //  CONSTANTS
 // ─────────────────────────────────────────────────────────────
@@ -614,7 +626,7 @@ function TreeNode({ node, depth, isMinister, onEdit, onAdd }) {
 //  MAIN APP
 // ─────────────────────────────────────────────────────────────
 export default function App() {
-  const [config,   setConfig]   = useState(()=> Store.get(CONFIG_KEY)  || {});
+  const [config,   setConfig]   = useState(()=> ({ ...HARDCODED_CONFIG, ...(Store.get(CONFIG_KEY)||{}) }));
   const [session,  setSession]  = useState(()=> Store.get(SESSION_KEY) || null);
   const [authErr,  setAuthErr]  = useState("");
   const [showSetup,setShowSetup]= useState(false);
@@ -631,7 +643,7 @@ export default function App() {
   const [addParent,setAddParent]= useState(null);
   const [toast,    setToast]    = useState(null);
 
-  const isConnected = !!(config.clientId&&config.ministerEmail&&config.apiKey&&config.sheetId&&config.scriptUrl);
+  const isConnected = true; // credentials are hardcoded
   const userEmail   = session?.email||"";
   const isMinister  = userEmail && config.ministerEmail &&
     userEmail.toLowerCase()===config.ministerEmail.toLowerCase();
