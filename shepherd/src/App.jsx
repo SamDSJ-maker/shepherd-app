@@ -626,7 +626,8 @@ function TreeNode({ node, depth, isMinister, onEdit, onAdd }) {
 //  MAIN APP
 // ─────────────────────────────────────────────────────────────
 export default function App() {
-  const [config,   setConfig]   = useState(()=> ({ ...HARDCODED_CONFIG, ...(Store.get(CONFIG_KEY)||{}) }));
+  // Always use hardcoded config — ignore any stale browser storage
+  const [config,   setConfig]   = useState(()=> ({ ...HARDCODED_CONFIG }));
   const [session,  setSession]  = useState(()=> Store.get(SESSION_KEY) || null);
   const [authErr,  setAuthErr]  = useState("");
   const [showSetup,setShowSetup]= useState(false);
