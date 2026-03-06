@@ -666,14 +666,26 @@ export default function App() {
     if (!config.apiKey||!config.sheetId) return;
     setLoading(true); setSyncMsg("Loading…");
     try {
-      const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.sheetId}/values/Network?key=${config.apiKey}`);
-      if (!r.ok) throw new Error((await r.json()).error?.message||"Load failed");
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${config.sheetId}/values/Network?key=${config.apiKey}`;
+      console.log("Loading sheet from:", url);
+      const r = await fetch(url);
+      if (!r.ok) {
+        const err = await r.json();
+        console.error("Sheet load error:", err);
+        throw new Error(err.error?.message||"Load failed");
+      }
       const j = await r.json();
-      if ((j.values||[]).length<=1){setSyncMsg("Sheet is empty");setLoading(false);return;}
+      console.log("Sheet rows loaded:", (j.values||[]).length);
+      console.log("First few rows:", JSON.stringify((j.values||[]).slice(0,4)));
+      if ((j.values||[]).length<=1){setSyncMsg("Sheet is empty — add families first");setLoading(false);return;}
       const {minister:m, nodes:n} = rowsToTree(j.values);
+      console.log("Parsed nodes:", n.length, "authEmails:", flatTree(n).map(x=>x.authEmail).filter(Boolean));
       setMinister(m); setNodes(n);
       setSyncMsg(`✓ ${new Date().toLocaleTimeString()}`);
-    } catch(e){setSyncMsg(`⚠ ${e.message}`);}
+    } catch(e){
+      console.error("Load exception:", e);
+      setSyncMsg(`⚠ ${e.message}`);
+    }
     setLoading(false);
   },[config]);
 
