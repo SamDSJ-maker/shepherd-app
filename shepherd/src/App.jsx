@@ -682,15 +682,19 @@ export default function App() {
   // After sheet loads, verify pending sessions (leaders whose email needed sheet data)
   useEffect(()=>{
     if (!session?.pending) return;
-    const email = session.email;
-    const isMin = email.toLowerCase()===(config.ministerEmail||"").toLowerCase();
-    const isLeader = flatTree(nodes).some(n=>n.authEmail&&n.authEmail.toLowerCase()===email.toLowerCase());
+    const email = session.email.toLowerCase().trim();
+    const isMin = email===(config.ministerEmail||"").toLowerCase().trim();
+    const allNodes = flatTree(nodes);
+    // Debug: log all authEmails vs login email
+    console.log("Verifying login:", email);
+    console.log("All authEmails in sheet:", allNodes.map(n=>n.authEmail).filter(Boolean));
+    const isLeader = allNodes.some(n=>n.authEmail&&n.authEmail.toLowerCase().trim()===email);
+    console.log("isLeader:", isLeader, "isMin:", isMin);
     if (isMin||isLeader){
       setSession(s=>({...s,pending:false}));
       Store.set(SESSION_KEY,{...session,pending:false});
-    } else if (!loading && nodes.length>0){
-      // Sheet has loaded and user still not found
-      setAuthErr(`${email} is not authorized. Ask your minister to grant access.`);
+    } else if (!loading && allNodes.length>0){
+      setAuthErr(`${session.email} is not authorized. Ask your minister to grant access.`);
       setSession(null);
       Store.remove(SESSION_KEY);
     }
