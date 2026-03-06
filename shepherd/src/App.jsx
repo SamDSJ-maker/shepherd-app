@@ -167,18 +167,46 @@ function rowsToTree(rows) {
   const map = {};
   const rootIds = [];
 
+  // Use header row to find column indices — handles any column order
+  const headers = rows[0] || [];
+  const col = (name) => headers.indexOf(name);
+  const get  = (r, name) => r[col(name)] || "";
+
   rows.slice(1).forEach(r => {
-    if (!r || r.length < 4) return;
-    const [type,id,pid,fname,cp,mid,tgid,country,state,notes,lc,ln,authEmail] = r;
+    if (!r || r.length < 2) return;
+    const type = get(r,"Type");
+    const id   = get(r,"Id");
+    const pid  = get(r,"ParentId");
     if (type==="MINISTER") {
-      Object.assign(minister,{name:fname,contactPerson:cp,memberId:mid,telegramId:tgid,
-        country,state,notes,googleEmail:authEmail||""});
+      Object.assign(minister,{
+        name:          get(r,"FamilyName"),
+        contactPerson: get(r,"ContactPerson"),
+        memberId:      get(r,"MemberId"),
+        telegramId:    get(r,"TelegramId"),
+        country:       get(r,"Country"),
+        state:         get(r,"State"),
+        notes:         get(r,"Notes"),
+        googleEmail:   get(r,"AuthEmail"),
+      });
       return;
     }
     if (type==="NODE") {
-      map[id] = { id, parentId:pid, familyName:fname, contactPerson:cp,
-        memberId:mid, telegramId:tgid, country, state, notes,
-        lastContact:lc||null, lastNote:ln||"", authEmail:authEmail||"", children:[] };
+      const authEmail = get(r,"AuthEmail");
+      console.log(`Node ${id} authEmail: "${authEmail}"`);
+      map[id] = {
+        id, parentId:pid,
+        familyName:    get(r,"FamilyName"),
+        contactPerson: get(r,"ContactPerson"),
+        memberId:      get(r,"MemberId"),
+        telegramId:    get(r,"TelegramId"),
+        country:       get(r,"Country"),
+        state:         get(r,"State"),
+        notes:         get(r,"Notes"),
+        lastContact:   get(r,"LastContact")||null,
+        lastNote:      get(r,"LastNote"),
+        authEmail:     authEmail,
+        children:[]
+      };
       if (!pid) rootIds.push(id);
     }
   });
@@ -691,26 +719,27 @@ export default function App() {
 
   useEffect(()=>{if(isConnected) load();},[isConnected]);
 
-  // After sheet loads, verify pending sessions (leaders whose email needed sheet data)
+  // After sheet loads, verify pending sessions
+  // Runs whenever nodes updates — so it always checks AFTER sheet loads
   useEffect(()=>{
     if (!session?.pending) return;
+    if (loading) return; // wait for sheet to finish loading
     const email = session.email.toLowerCase().trim();
     const isMin = email===(config.ministerEmail||"").toLowerCase().trim();
     const allNodes = flatTree(nodes);
-    // Debug: log all authEmails vs login email
-    console.log("Verifying login:", email);
-    console.log("All authEmails in sheet:", allNodes.map(n=>n.authEmail).filter(Boolean));
+    console.log("Verifying login (post-load):", email);
+    console.log("All authEmails:", allNodes.map(n=>n.authEmail).filter(Boolean));
     const isLeader = allNodes.some(n=>n.authEmail&&n.authEmail.toLowerCase().trim()===email);
     console.log("isLeader:", isLeader, "isMin:", isMin);
     if (isMin||isLeader){
       setSession(s=>({...s,pending:false}));
       Store.set(SESSION_KEY,{...session,pending:false});
-    } else if (!loading && allNodes.length>0){
+    } else {
       setAuthErr(`${session.email} is not authorized. Ask your minister to grant access.`);
       setSession(null);
       Store.remove(SESSION_KEY);
     }
-  },[nodes,loading]);
+  },[nodes,loading,session?.pending]);
 
   // ── SAVE via script tag (bypasses CORS) ─────────────────────
   const save = useCallback((m,n)=>{
