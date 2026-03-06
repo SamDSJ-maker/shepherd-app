@@ -990,6 +990,9 @@ export default function App() {
           {isMinister&&(
             <GoldBtn onClick={handleAddRoot} small>+ Core Family</GoldBtn>
           )}
+          {!isMinister&&leaderNode&&(
+            <GoldBtn onClick={()=>setAddParent(leaderNode)} small>+ Add Family</GoldBtn>
+          )}
         </div>
 
         {/* minister profile (minister only) */}
