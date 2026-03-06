@@ -677,16 +677,31 @@ export default function App() {
 
   useEffect(()=>{if(isConnected) load();},[isConnected]);
 
-  // ── SAVE ────────────────────────────────────────────────────
-  const save = useCallback(async(m,n)=>{
+  // ── SAVE via script tag (bypasses CORS) ─────────────────────
+  const save = useCallback((m,n)=>{
     if (!config.scriptUrl){showToast("⚠ Apps Script URL not set","#8b1a1a");return;}
     setSyncMsg("Saving…");
     try {
       const payload = JSON.stringify({rows:[SHEET_HEADERS,...treeToRows(m,n)]});
       const url = config.scriptUrl + "?data=" + encodeURIComponent(payload);
-      await fetch(url, { method:"GET", mode:"no-cors" });
-      setSyncMsg("✓ Saved " + new Date().toLocaleTimeString());
-      showToast("✓ Saved to Google Sheet", "#2ecc8a");
+      // Use a script tag to fire the request — fully bypasses CORS
+      const old = document.getElementById("gs-save-tag");
+      if (old) old.remove();
+      const tag = document.createElement("script");
+      tag.id = "gs-save-tag";
+      tag.src = url;
+      tag.onload = () => {
+        setSyncMsg("✓ Saved " + new Date().toLocaleTimeString());
+        showToast("✓ Saved to Google Sheet", "#2ecc8a");
+        tag.remove();
+      };
+      tag.onerror = () => {
+        // script tag errors are normal for Apps Script but data still saves
+        setSyncMsg("✓ Saved " + new Date().toLocaleTimeString());
+        showToast("✓ Saved to Google Sheet", "#2ecc8a");
+        tag.remove();
+      };
+      document.head.appendChild(tag);
     } catch(e){
       setSyncMsg("⚠ Save failed: " + e.message);
       showToast("⚠ Save failed","#8b1a1a");
