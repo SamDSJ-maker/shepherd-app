@@ -489,10 +489,7 @@ function LoginScreen({ clientId, onToken, onSetup, error }) {
           <GoldBtn onClick={onSetup} full>⚙ Complete Setup First</GoldBtn>
         )}
 
-        <button onClick={onSetup} style={{background:"none",border:"none",color:T.textDim,
-          fontSize:12,cursor:"pointer",marginTop:20,fontFamily:"'Cinzel',serif"}}>
-          {clientId?"⚙ Settings":""}
-        </button>
+
       </div>
     </div>
   );
