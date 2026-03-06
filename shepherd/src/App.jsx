@@ -47,7 +47,7 @@ const HARDCODED_CONFIG = {
   ministerEmail: "swami4lyfe@gmail.com",
   sheetId:       "14HH7PNFOvEeBhCjwGrfPd2vW5Dp9DYOQER0aE2usfl0",
   apiKey:        "AIzaSyBV39F-G7bnjpHG7CVBtUndaIMBhcdfdHk",
-  scriptUrl:     "https://script.google.com/macros/library/d/1PLup-gVRshY4kFPvFiaRiSiEw9M1M9mlu1LcmxM5a93E2kVQOv-4R758/1",
+  scriptUrl:     "https://script.google.com/macros/s/AKfycbz1XPc_ra9Rrbb8N9ErfzwscIm3WJePS-QYqVf4e3jzJccTWO_4IE9G8Vbl_UDAiyJN/exec",
 };
 
 // ─────────────────────────────────────────────────────────────
